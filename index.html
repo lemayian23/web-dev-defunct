@@ -31,14 +31,22 @@
 
     <form id="profile-form">
         <label for="student-name">Student name</label>
-
         <input
-            id="student-name"
+             id="student-name"
+             type="text"
+             name="student-name"
+             required
+        >
+        
+        <label for="student-course">Course</label>
+        <input
+            id="student-course"
             type="text"
-            name="student-name"
+            name="student-course"
+            required
         >
 
-        <button type="submit">Update Name</button>
+        <button type="submit">Create Student</button>
     </form>
 
     <section>
