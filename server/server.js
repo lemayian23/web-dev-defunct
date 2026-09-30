@@ -13,6 +13,8 @@ const users = [
     }
 ];
 
+let nextUserId = 3;
+
 
 const server = http.createServer(function (request, response) {
 
@@ -236,7 +238,8 @@ const server = http.createServer(function (request, response) {
 
 
             // Create server-owned ID
-            const newId = users.length + 1;
+            const newId = nextUserId;
+            nextUserId++;
 
 
             // Create new user
