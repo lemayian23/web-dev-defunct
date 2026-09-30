@@ -18,8 +18,29 @@ const users = [
 
 const server = http.createServer(function (request, response) {
 
+    response.setHeader(
+        "Access-Control-Allow-Origin",
+        "*"
+    );
+
+    response.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS"
+    );
+
+    response.setHeader(
+        "Access-Control-Allow-Headers",
+        "Content-Type"
+    );
+
     console.log("Method:", request.method);
     console.log("URL:", request.url);
+
+    if (request.method === "OPTIONS") {
+        response.statusCode = 204;
+        response.end();
+        return;
+    }
 
 
     if (request.method === "GET" && request.url === "/") {
@@ -64,18 +85,26 @@ const server = http.createServer(function (request, response) {
             body += chunk;
         });
 
-
-        request.on("end", function () {
-
+        request.on("end", function (){
             const newUser = JSON.parse(body);
 
-            newUser.id = users.length + 1;
+            if (!newUser.name) {
+                response.statusCode = 400;
 
+                response.setHeader(
+                    "Content-Type",
+                    "application/json"
+                );
+
+                return;
+            }
+
+            newUser.id = users.length + 1;
+            
             users.push(newUser);
 
-
             response.statusCode = 201;
-
+            
             response.setHeader(
                 "Content-Type",
                 "application/json"
