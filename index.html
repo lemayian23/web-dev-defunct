@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<header>
+    <div>TUK Student Portal</div>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/profile">Profile</a>
+        <button type="button" class="logged-out">Logged Out</button>
+    </nav>
+</header>
+
+<main>
+    <h1>Student Portal</h1>
+
+    <p id="welcome-message">Welcome Denis!</p>
+
+    <form id="profile-form">
+        <label for="student-name">Student name</label>
+        <input id="student-name" type="text" name="student-name">
+
+        <button type="submit">Update Name</button>
+    </form>
+
+    <section>
+        <h2>My Courses</h2>
+
+        <div class="course-grid">
+            <article>
+                <h3>Web Development</h3>
+            </article>
+
+            <article>
+                <h3>Artificial Intelligence</h3>
+            </article>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <p>&copy; 2026 TUK Student Portal</p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

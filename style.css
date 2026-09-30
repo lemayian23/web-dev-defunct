@@ -1,0 +1,55 @@
+* {
+    box-sizing: border-box;
+}
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f2f2f2;
+}
+
+h1 {
+    color: black;
+    font-size: 40px;
+    padding: 10px;
+    border: 2px solid black;
+    margin: 30px;
+    width: 50%;
+    max-width: 500px;
+}
+
+header {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+@media (min-width: 768) {
+    header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+nav {
+    display: flex;
+    gap: 20px;
+    flex-direction: row;
+}
+
+.course-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 768px) {
+    .course-grid {
+        grid-template-columns: 1fr 1fr
+    }
+}
+.logged-out {
+    opacity: 0.6;
+}
+
+footer {
+    text-align: center;
+}
