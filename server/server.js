@@ -1,6 +1,9 @@
 const http = require("http");
 
-const db = require("./database");
+const {
+    db,
+    initializeDatabase
+} = require("./database");
 
 const { URL } = require("url");
 
