@@ -2,7 +2,9 @@ const http = require("http");
 
 const {
     db,
-    initializeDatabase
+    initializeDatabase,
+    getAllUsers,
+    getUserById
 } = require("./database");
 
 const { URL } = require("url");
@@ -77,30 +79,8 @@ const server = http.createServer(function (request, response) {
         pathname === "/users"
     ) {
 
-        db.all(
-            "SELECT * FROM users",
-            function (error, rows) {
-
-                if (error) {
-
-                    console.error(error);
-
-                    response.statusCode = 500;
-
-                    response.setHeader(
-                        "Content-Type",
-                        "application/json"
-                    );
-
-                    response.end(
-                        JSON.stringify({
-                            error: "Failed to retrieve users"
-                        })
-                    );
-
-                    return;
-                }
-
+        getAllUsers()
+            .then(function (users) {
 
                 response.statusCode = 200;
 
@@ -110,11 +90,28 @@ const server = http.createServer(function (request, response) {
                 );
 
                 response.end(
-                    JSON.stringify(rows)
+                    JSON.stringify(users)
                 );
 
-            }
-        );
+            })
+            .catch(function (error) {
+
+                console.error(error);
+
+                response.statusCode = 500;
+
+                response.setHeader(
+                    "Content-Type",
+                    "application/json"
+                );
+
+                response.end(
+                    JSON.stringify({
+                        error: "Failed to retrieve users"
+                    })
+                );
+
+            });
 
         return;
     }
@@ -150,31 +147,8 @@ const server = http.createServer(function (request, response) {
         }
 
 
-        db.get(
-            "SELECT * FROM users WHERE id = ?",
-            [id],
-            function (error, user) {
-
-                if (error) {
-
-                    console.error(error);
-
-                    response.statusCode = 500;
-
-                    response.setHeader(
-                        "Content-Type",
-                        "application/json"
-                    );
-
-                    response.end(
-                        JSON.stringify({
-                            error: "Failed to retrieve user"
-                        })
-                    );
-
-                    return;
-                }
-
+        getUserById(id)
+            .then(function (user) {
 
                 if (!user) {
 
@@ -194,7 +168,6 @@ const server = http.createServer(function (request, response) {
                     return;
                 }
 
-
                 response.statusCode = 200;
 
                 response.setHeader(
@@ -206,8 +179,25 @@ const server = http.createServer(function (request, response) {
                     JSON.stringify(user)
                 );
 
-            }
-        );
+            })
+            .catch(function (error) {
+
+                console.error(error);
+
+                response.statusCode = 500;
+
+                response.setHeader(
+                    "Content-Type",
+                    "application/json"
+                );
+
+                response.end(
+                    JSON.stringify({
+                        error: "Failed to retrieve user"
+                    })
+                );
+
+            });
 
         return;
     }

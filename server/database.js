@@ -68,8 +68,49 @@ function initializeDatabase() {
 
 }
 
+function getAllUsers() {
+    return new Promise(function (resolve, reject) {
+        db.all(
+            "SELECT * FROM users",
+            function (error, rows) {
+
+                if (error) {
+
+                    reject(error);
+
+                    return;
+                }
+
+                resolve(rows);
+            }
+        );
+    });
+}
+
+function getUserById(id) {
+
+    return new Promise(function (resolve, reject) {
+
+        db.get(
+            "SELECT * FROM users WHERE id = ?",
+            [id],
+            function (error, user) {
+
+                if (error) {
+                     reject(error);
+
+                     return;
+                }
+
+                resolve(user);
+            }
+        );
+    });
+}
 
 module.exports = {
     db: db,
-    initializeDatabase: initializeDatabase
+    initializeDatabase: initializeDatabase,
+    getAllUsers: getAllUsers,
+    getUserById: getUserById
 };
