@@ -717,10 +717,17 @@ const server = http.createServer(function (request, response) {
 });
 
 
-server.listen(3000, function () {
+initializeDatabase()
+    .then(function () {
 
-    console.log(
-        "Server running on http://localhost:3000"
-    );
+        server.listen(3000, function () {
 
-});
+            console.log(
+                "Server is running on http://localhost:3000"
+            );
+        });
+
+    })
+    .catch(function (error) {   
+        console.error("Failed to initialize database:", error);
+    }); 
