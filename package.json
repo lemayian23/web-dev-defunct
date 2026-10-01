@@ -1,0 +1,24 @@
+{
+  "name": "student_portal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lemayian23/web-dev-defunct.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lemayian23/web-dev-defunct/issues"
+  },
+  "homepage": "https://github.com/lemayian23/web-dev-defunct#readme",
+  "dependencies": {
+    "sqlite3": "^6.0.1"
+  }
+}

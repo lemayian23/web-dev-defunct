@@ -1,22 +1,19 @@
 const http = require("http");
 
-const users = [
-    {
-        id: 1,
-        name: "Denis",
-        course: "Web Development"
-    },
-    {
-        id: 2,
-        name: "Allan",
-        course: "Artificial Intelligence"
-    }
-];
+const db = require("./database");
 
-let nextUserId = 3;
+const { URL } = require("url");
 
 
 const server = http.createServer(function (request, response) {
+
+    const requestUrl = new URL(
+        request.url,
+        "http://localhost:3000"
+    );
+
+    const pathname = requestUrl.pathname;
+
 
     response.setHeader(
         "Access-Control-Allow-Origin",
@@ -36,6 +33,7 @@ const server = http.createServer(function (request, response) {
 
     console.log("Method:", request.method);
     console.log("URL:", request.url);
+    console.log("Path:", pathname);
 
 
     // Handle CORS preflight request
@@ -52,7 +50,7 @@ const server = http.createServer(function (request, response) {
     // GET /
     if (
         request.method === "GET" &&
-        request.url === "/"
+        pathname === "/"
     ) {
 
         response.statusCode = 200;
@@ -73,18 +71,46 @@ const server = http.createServer(function (request, response) {
     // GET /users
     if (
         request.method === "GET" &&
-        request.url === "/users"
+        pathname === "/users"
     ) {
 
-        response.statusCode = 200;
+        db.all(
+            "SELECT * FROM users",
+            function (error, rows) {
 
-        response.setHeader(
-            "Content-Type",
-            "application/json"
-        );
+                if (error) {
 
-        response.end(
-            JSON.stringify(users)
+                    console.error(error);
+
+                    response.statusCode = 500;
+
+                    response.setHeader(
+                        "Content-Type",
+                        "application/json"
+                    );
+
+                    response.end(
+                        JSON.stringify({
+                            error: "Failed to retrieve users"
+                        })
+                    );
+
+                    return;
+                }
+
+
+                response.statusCode = 200;
+
+                response.setHeader(
+                    "Content-Type",
+                    "application/json"
+                );
+
+                response.end(
+                    JSON.stringify(rows)
+                );
+
+            }
         );
 
         return;
@@ -94,23 +120,17 @@ const server = http.createServer(function (request, response) {
     // GET /users/:id
     if (
         request.method === "GET" &&
-        request.url.startsWith("/users/")
+        pathname.startsWith("/users/")
     ) {
 
         const id = Number(
-            request.url.split("/")[2]
+            pathname.split("/")[2]
         );
 
-        const user = users.find(function (user) {
 
-            return user.id === id;
+        if (Number.isNaN(id)) {
 
-        });
-
-
-        if (!user) {
-
-            response.statusCode = 404;
+            response.statusCode = 400;
 
             response.setHeader(
                 "Content-Type",
@@ -119,7 +139,7 @@ const server = http.createServer(function (request, response) {
 
             response.end(
                 JSON.stringify({
-                    error: "User not found"
+                    error: "Invalid user ID"
                 })
             );
 
@@ -127,15 +147,63 @@ const server = http.createServer(function (request, response) {
         }
 
 
-        response.statusCode = 200;
+        db.get(
+            "SELECT * FROM users WHERE id = ?",
+            [id],
+            function (error, user) {
 
-        response.setHeader(
-            "Content-Type",
-            "application/json"
-        );
+                if (error) {
 
-        response.end(
-            JSON.stringify(user)
+                    console.error(error);
+
+                    response.statusCode = 500;
+
+                    response.setHeader(
+                        "Content-Type",
+                        "application/json"
+                    );
+
+                    response.end(
+                        JSON.stringify({
+                            error: "Failed to retrieve user"
+                        })
+                    );
+
+                    return;
+                }
+
+
+                if (!user) {
+
+                    response.statusCode = 404;
+
+                    response.setHeader(
+                        "Content-Type",
+                        "application/json"
+                    );
+
+                    response.end(
+                        JSON.stringify({
+                            error: "User not found"
+                        })
+                    );
+
+                    return;
+                }
+
+
+                response.statusCode = 200;
+
+                response.setHeader(
+                    "Content-Type",
+                    "application/json"
+                );
+
+                response.end(
+                    JSON.stringify(user)
+                );
+
+            }
         );
 
         return;
@@ -145,13 +213,12 @@ const server = http.createServer(function (request, response) {
     // POST /users
     if (
         request.method === "POST" &&
-        request.url === "/users"
+        pathname === "/users"
     ) {
 
         let body = "";
 
 
-        // Receive request body
         request.on("data", function (chunk) {
 
             body += chunk;
@@ -159,13 +226,11 @@ const server = http.createServer(function (request, response) {
         });
 
 
-        // Process complete request body
         request.on("end", function () {
 
             let newUser;
 
 
-            // Convert JSON text into JavaScript object
             try {
 
                 newUser = JSON.parse(body);
@@ -189,7 +254,6 @@ const server = http.createServer(function (request, response) {
             }
 
 
-            // Validate name
             if (
                 !newUser.name ||
                 typeof newUser.name !== "string" ||
@@ -213,7 +277,6 @@ const server = http.createServer(function (request, response) {
             }
 
 
-            // Validate course
             if (
                 !newUser.course ||
                 typeof newUser.course !== "string" ||
@@ -237,33 +300,57 @@ const server = http.createServer(function (request, response) {
             }
 
 
-            // Create server-owned ID
-            const newId = nextUserId;
-            nextUserId++;
+            db.run(
+                `
+                INSERT INTO users (name, course)
+                VALUES (?, ?)
+                `,
+                [
+                    newUser.name.trim(),
+                    newUser.course.trim()
+                ],
+                function (error) {
+
+                    if (error) {
+
+                        console.error(error);
+
+                        response.statusCode = 500;
+
+                        response.setHeader(
+                            "Content-Type",
+                            "application/json"
+                        );
+
+                        response.end(
+                            JSON.stringify({
+                                error: "Failed to create user"
+                            })
+                        );
+
+                        return;
+                    }
 
 
-            // Create new user
-            const user = {
-                id: newId,
-                name: newUser.name.trim(),
-                course: newUser.course.trim()
-            };
+                    const user = {
+                        id: this.lastID,
+                        name: newUser.name.trim(),
+                        course: newUser.course.trim()
+                    };
 
 
-            // Add user to array
-            users.push(user);
+                    response.statusCode = 201;
 
+                    response.setHeader(
+                        "Content-Type",
+                        "application/json"
+                    );
 
-            // Send successful response
-            response.statusCode = 201;
+                    response.end(
+                        JSON.stringify(user)
+                    );
 
-            response.setHeader(
-                "Content-Type",
-                "application/json"
-            );
-
-            response.end(
-                JSON.stringify(user)
+                }
             );
 
         });
@@ -275,24 +362,17 @@ const server = http.createServer(function (request, response) {
     // PATCH /users/:id
     if (
         request.method === "PATCH" &&
-        request.url.startsWith("/users/")
+        pathname.startsWith("/users/")
     ) {
 
         const id = Number(
-            request.url.split("/")[2]
+            pathname.split("/")[2]
         );
 
-        const user = users.find(function (user) {
 
-            return user.id === id;
+        if (Number.isNaN(id)) {
 
-        });
-
-
-        // Check whether the user exists
-        if (!user) {
-
-            response.statusCode = 404;
+            response.statusCode = 400;
 
             response.setHeader(
                 "Content-Type",
@@ -301,7 +381,7 @@ const server = http.createServer(function (request, response) {
 
             response.end(
                 JSON.stringify({
-                    error: "User not found"
+                    error: "Invalid user ID"
                 })
             );
 
@@ -309,31 +389,296 @@ const server = http.createServer(function (request, response) {
         }
 
 
-        let body = "";
+        db.get(
+            "SELECT * FROM users WHERE id = ?",
+            [id],
+            function (error, user) {
+
+                if (error) {
+
+                    console.error(error);
+
+                    response.statusCode = 500;
+
+                    response.setHeader(
+                        "Content-Type",
+                        "application/json"
+                    );
+
+                    response.end(
+                        JSON.stringify({
+                            error: "Failed to find user"
+                        })
+                    );
+
+                    return;
+                }
 
 
-        // Receive request body
-        request.on("data", function (chunk) {
+                if (!user) {
 
-            body += chunk;
+                    response.statusCode = 404;
 
-        });
+                    response.setHeader(
+                        "Content-Type",
+                        "application/json"
+                    );
+
+                    response.end(
+                        JSON.stringify({
+                            error: "User not found"
+                        })
+                    );
+
+                    return;
+                }
 
 
-        // Process complete request body
-        request.on("end", function () {
-
-            let updates;
+                let body = "";
 
 
-            // Convert JSON into JavaScript object
-            try {
+                request.on("data", function (chunk) {
 
-                updates = JSON.parse(body);
+                    body += chunk;
 
-            } catch (error) {
+                });
 
-                response.statusCode = 400;
+
+                request.on("end", function () {
+
+                    let updates;
+
+
+                    try {
+
+                        updates = JSON.parse(body);
+
+                    } catch (error) {
+
+                        response.statusCode = 400;
+
+                        response.setHeader(
+                            "Content-Type",
+                            "application/json"
+                        );
+
+                        response.end(
+                            JSON.stringify({
+                                error: "Invalid JSON"
+                            })
+                        );
+
+                        return;
+                    }
+
+
+                    if (updates.name !== undefined) {
+
+                        if (
+                            typeof updates.name !== "string" ||
+                            updates.name.trim() === ""
+                        ) {
+
+                            response.statusCode = 400;
+
+                            response.setHeader(
+                                "Content-Type",
+                                "application/json"
+                            );
+
+                            response.end(
+                                JSON.stringify({
+                                    error:
+                                        "Name must be a non-empty string"
+                                })
+                            );
+
+                            return;
+                        }
+
+                    }
+
+
+                    if (updates.course !== undefined) {
+
+                        if (
+                            typeof updates.course !== "string" ||
+                            updates.course.trim() === ""
+                        ) {
+
+                            response.statusCode = 400;
+
+                            response.setHeader(
+                                "Content-Type",
+                                "application/json"
+                            );
+
+                            response.end(
+                                JSON.stringify({
+                                    error:
+                                        "Course must be a non-empty string"
+                                })
+                            );
+
+                            return;
+                        }
+
+                    }
+
+
+                    const updatedName =
+                        updates.name !== undefined
+                            ? updates.name.trim()
+                            : user.name;
+
+
+                    const updatedCourse =
+                        updates.course !== undefined
+                            ? updates.course.trim()
+                            : user.course;
+
+
+                    db.run(
+                        `
+                        UPDATE users
+                        SET name = ?, course = ?
+                        WHERE id = ?
+                        `,
+                        [
+                            updatedName,
+                            updatedCourse,
+                            id
+                        ],
+                        function (error) {
+
+                            if (error) {
+
+                                console.error(error);
+
+                                response.statusCode = 500;
+
+                                response.setHeader(
+                                    "Content-Type",
+                                    "application/json"
+                                );
+
+                                response.end(
+                                    JSON.stringify({
+                                        error:
+                                            "Failed to update user"
+                                    })
+                                );
+
+                                return;
+                            }
+
+
+                            const updatedUser = {
+                                id: id,
+                                name: updatedName,
+                                course: updatedCourse
+                            };
+
+
+                            response.statusCode = 200;
+
+                            response.setHeader(
+                                "Content-Type",
+                                "application/json"
+                            );
+
+                            response.end(
+                                JSON.stringify(updatedUser)
+                            );
+
+                        }
+                    );
+
+                });
+
+            }
+        );
+
+        return;
+    }
+
+
+    // DELETE /users/:id
+    if (
+        request.method === "DELETE" &&
+        pathname.startsWith("/users/")
+    ) {
+
+        const id = Number(
+            pathname.split("/")[2]
+        );
+
+
+        if (Number.isNaN(id)) {
+
+            response.statusCode = 400;
+
+            response.setHeader(
+                "Content-Type",
+                "application/json"
+            );
+
+            response.end(
+                JSON.stringify({
+                    error: "Invalid user ID"
+                })
+            );
+
+            return;
+        }
+
+
+        db.run(
+            "DELETE FROM users WHERE id = ?",
+            [id],
+            function (error) {
+
+                if (error) {
+
+                    console.error(error);
+
+                    response.statusCode = 500;
+
+                    response.setHeader(
+                        "Content-Type",
+                        "application/json"
+                    );
+
+                    response.end(
+                        JSON.stringify({
+                            error: "Failed to delete user"
+                        })
+                    );
+
+                    return;
+                }
+
+
+                if (this.changes === 0) {
+
+                    response.statusCode = 404;
+
+                    response.setHeader(
+                        "Content-Type",
+                        "application/json"
+                    );
+
+                    response.end(
+                        JSON.stringify({
+                            error: "User not found"
+                        })
+                    );
+
+                    return;
+                }
+
+
+                response.statusCode = 200;
 
                 response.setHeader(
                     "Content-Type",
@@ -342,144 +687,14 @@ const server = http.createServer(function (request, response) {
 
                 response.end(
                     JSON.stringify({
-                        error: "Invalid JSON"
+                        message: "User deleted successfully",
+                        id: id
                     })
                 );
 
-                return;
             }
-
-
-            // Update name if provided
-            if (updates.name !== undefined) {
-
-                if (
-                    typeof updates.name !== "string" ||
-                    updates.name.trim() === ""
-                ) {
-
-                    response.statusCode = 400;
-
-                    response.setHeader(
-                        "Content-Type",
-                        "application/json"
-                    );
-
-                    response.end(
-                        JSON.stringify({
-                            error: "Name must be a non-empty string"
-                        })
-                    );
-
-                    return;
-                }
-
-                user.name = updates.name.trim();
-            }
-
-
-            // Update course if provided
-            if (updates.course !== undefined) {
-
-                if (
-                    typeof updates.course !== "string" ||
-                    updates.course.trim() === ""
-                ) {
-
-                    response.statusCode = 400;
-
-                    response.setHeader(
-                        "Content-Type",
-                        "application/json"
-                    );
-
-                    response.end(
-                        JSON.stringify({
-                            error: "Course must be a non-empty string"
-                        })
-                    );
-
-                    return;
-                }
-
-                user.course = updates.course.trim();
-            }
-
-
-            // Send updated user
-            response.statusCode = 200;
-
-            response.setHeader(
-                "Content-Type",
-                "application/json"
-            );
-
-            response.end(
-                JSON.stringify(user)
-            );
-
-        });
-
-        return;
-    }
-
-    //DELETE /users/:id
-    if (
-        request.method === "DELETE" &&
-        request.url.startsWith("/users/")
-    ) {
-
-
-        const id = Number(
-            request.url.split("/")[2]
         );
 
-
-        const userIndex = users.findIndex( function (user) {
-
-            return user.id === id;
-
-        });
-
-        // Check whether user exists
-        if (userIndex === -1) {
-
-            response.statusCode = 404;
-
-            response.setHeader(
-                "Content-Type",
-                "application/json"
-            );
-
-            response.end(
-                JSON.stringify({
-                    error: "User not found"
-                })
-            );
-
-            return;
-        }
-
-        // Remove user from array
-        const deletedUser = users.splice(
-            userIndex,
-            1
-        )[0];
-
-        // Send deleted user back to client
-        response.statusCode = 200;
-
-        response.setHeader(
-            "Content-Type",
-            "application/json"
-        );
-
-        response.end(
-            JSON.stringify({
-                message:"Üser deleted successfully",
-                user: deletedUser
-            })
-        );
         return;
     }
 
