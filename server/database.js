@@ -108,9 +108,81 @@ function getUserById(id) {
     });
 }
 
+function createUser(name, course) {
+    return new Promise(function (resolve, reject) {
+
+        db.run(
+            `
+            INSERT INTO users (name, course)
+            VALUES (?, ?)
+            `,
+            [name, course],
+            function(error) {
+
+                if (error) {
+                    reject(error);
+                    return;
+
+                }
+
+                const user = {
+                    id: this.lastID,
+                    name: name,
+                    course: course
+                };
+
+                resolve(user);
+            }
+        );
+    });
+}
+
+function updateUser(id, name, course) {
+
+    return new Promise(function (resolve, reject) {
+
+        db.run(
+
+            `
+            UPDATE users
+            SET name = ?, course = ?
+            WHERE id = ?
+            `,
+            [
+                name,
+                course,
+                id
+            ],
+            function (error) {
+
+                if (error) {
+
+                    if (error) {
+
+                        reject(error);
+
+                        return;
+                    }
+
+                    const updateUser = {
+
+                        id: id,
+                        name: name,
+                        course: course
+                    };
+
+                    resolve(updatedUser);
+                }
+            }   
+        );
+    });
+}
+
 module.exports = {
     db: db,
     initializeDatabase: initializeDatabase,
     getAllUsers: getAllUsers,
-    getUserById: getUserById
+    getUserById: getUserById,
+    createUser: createUser,
+    updateUser: updateUser
 };

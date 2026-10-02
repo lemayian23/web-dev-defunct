@@ -1,10 +1,12 @@
 const http = require("http");
 
 const {
-    db,
     initializeDatabase,
     getAllUsers,
-    getUserById
+    getUserById,
+    createUser,
+    updateUser,
+    deleteUser
 } = require("./database");
 
 const { URL } = require("url");
@@ -293,44 +295,12 @@ const server = http.createServer(function (request, response) {
             }
 
 
-            db.run(
-                `
-                INSERT INTO users (name, course)
-                VALUES (?, ?)
-                `,
-                [
-                    newUser.name.trim(),
-                    newUser.course.trim()
-                ],
-                function (error) {
+            createUser(
+                newUser.name.trim(), 
+                newUser.course.trim()
+            )
 
-                    if (error) {
-
-                        console.error(error);
-
-                        response.statusCode = 500;
-
-                        response.setHeader(
-                            "Content-Type",
-                            "application/json"
-                        );
-
-                        response.end(
-                            JSON.stringify({
-                                error: "Failed to create user"
-                            })
-                        );
-
-                        return;
-                    }
-
-
-                    const user = {
-                        id: this.lastID,
-                        name: newUser.name.trim(),
-                        course: newUser.course.trim()
-                    };
-
+                .then(function (user) {
 
                     response.statusCode = 201;
 
@@ -338,56 +308,9 @@ const server = http.createServer(function (request, response) {
                         "Content-Type",
                         "application/json"
                     );
-
-                    response.end(
-                        JSON.stringify(user)
-                    );
-
-                }
-            );
-
-        });
-
-        return;
-    }
-
-
-    // PATCH /users/:id
-    if (
-        request.method === "PATCH" &&
-        pathname.startsWith("/users/")
-    ) {
-
-        const id = Number(
-            pathname.split("/")[2]
-        );
-
-
-        if (Number.isNaN(id)) {
-
-            response.statusCode = 400;
-
-            response.setHeader(
-                "Content-Type",
-                "application/json"
-            );
-
-            response.end(
-                JSON.stringify({
-                    error: "Invalid user ID"
+                    response.end(JSON.stringify(user));
                 })
-            );
-
-            return;
-        }
-
-
-        db.get(
-            "SELECT * FROM users WHERE id = ?",
-            [id],
-            function (error, user) {
-
-                if (error) {
+                .catch(function (error) {
 
                     console.error(error);
 
@@ -400,203 +323,148 @@ const server = http.createServer(function (request, response) {
 
                     response.end(
                         JSON.stringify({
-                            error: "Failed to find user"
+                            error: "Failed to create user"
                         })
                     );
-
-                    return;
-                }
-
-
-                if (!user) {
-
-                    response.statusCode = 404;
-
-                    response.setHeader(
-                        "Content-Type",
-                        "application/json"
-                    );
-
-                    response.end(
-                        JSON.stringify({
-                            error: "User not found"
-                        })
-                    );
-
-                    return;
-                }
-
-
-                let body = "";
-
-
-                request.on("data", function (chunk) {
-
-                    body += chunk;
 
                 });
 
 
-                request.on("end", function () {
+        });
 
+        return;
+    }
+
+
+    // PATCH /users/:id
+    if (
+        request.method === "PATCH" &&
+        pathname.startsWith("/users/")
+    ) {
+        const id = Number(pathname.split("/")[2]);
+
+        if (Number.isNaN(id)) {
+            response.statusCode = 400;
+            response.setHeader("Content-Type", "application/json");
+            response.end(JSON.stringify({
+                error: "Invalid user ID"
+            }));
+            return;
+        }
+
+        getUserById(id)
+            .then(function(user) {
+                if (!user) {
+                    response.statusCode = 404;
+                    response.setHeader("Content-Type", "application/json");
+                    response.end(JSON.stringify({
+                        error: "User not found"
+                    }));
+                    return;
+                }
+
+                let body = "";
+
+                request.on("data", function (chunk) {
+                    body += chunk;
+                });
+
+                request.on("end", function () {
                     let updates;
 
-
                     try {
-
                         updates = JSON.parse(body);
-
                     } catch (error) {
-
                         response.statusCode = 400;
-
-                        response.setHeader(
-                            "Content-Type",
-                            "application/json"
-                        );
-
-                        response.end(
-                            JSON.stringify({
-                                error: "Invalid JSON"
-                            })
-                        );
-
+                        response.setHeader("Content-Type", "application/json");
+                        response.end(JSON.stringify({
+                            error: "Invalid JSON"
+                        }));
                         return;
                     }
 
+                    if (
+                        updates === null ||
+                        typeof updates !== "object" ||
+                        Array.isArray(updates)
+                    ) {
+                        response.statusCode = 400;
+                        response.setHeader("Content-Type", "application/json");
+                        response.end(JSON.stringify({
+                            error: "Request body must be a JSON object"
+                        }));
+                        return;
+                    }
 
-                    if (updates.name !== undefined) {
-
-                        if (
+                    if (
+                        updates.name !== undefined &&
+                        (
                             typeof updates.name !== "string" ||
                             updates.name.trim() === ""
-                        ) {
-
-                            response.statusCode = 400;
-
-                            response.setHeader(
-                                "Content-Type",
-                                "application/json"
-                            );
-
-                            response.end(
-                                JSON.stringify({
-                                    error:
-                                        "Name must be a non-empty string"
-                                })
-                            );
-
-                            return;
-                        }
-
+                        )
+                    ) {
+                        response.statusCode = 400;
+                        response.setHeader("Content-Type", "application/json");
+                        response.end(JSON.stringify({
+                            error: "Name must be a non-empty string"
+                        }));
+                        return;
                     }
 
-
-                    if (updates.course !== undefined) {
-
-                        if (
+                    if (
+                        updates.course !== undefined &&
+                        (
                             typeof updates.course !== "string" ||
-                            updates.course.trim() === ""
-                        ) {
-
-                            response.statusCode = 400;
-
-                            response.setHeader(
-                                "Content-Type",
-                                "application/json"
-                            );
-
-                            response.end(
-                                JSON.stringify({
-                                    error:
-                                        "Course must be a non-empty string"
-                                })
-                            );
-
-                            return;
-                        }
-
+                            updates.course.trim() == ""
+                        )
+                    ) {
+                        response.statusCode = 400;
+                        response.setHeader("Content-Type", "application/json");
+                        response.end(JSON.stringify({
+                            error: "Course must be a non empty string"
+                        }));
+                        return;
                     }
-
 
                     const updatedName =
                         updates.name !== undefined
                             ? updates.name.trim()
                             : user.name;
 
-
-                    const updatedCourse =
+                    const updatedCourse = 
                         updates.course !== undefined
                             ? updates.course.trim()
                             : user.course;
 
-
-                    db.run(
-                        `
-                        UPDATE users
-                        SET name = ?, course = ?
-                        WHERE id = ?
-                        `,
-                        [
-                            updatedName,
-                            updatedCourse,
-                            id
-                        ],
-                        function (error) {
-
-                            if (error) {
-
-                                console.error(error);
-
-                                response.statusCode = 500;
-
-                                response.setHeader(
-                                    "Content-Type",
-                                    "application/json"
-                                );
-
-                                response.end(
-                                    JSON.stringify({
-                                        error:
-                                            "Failed to update user"
-                                    })
-                                );
-
-                                return;
-                            }
-
-
-                            const updatedUser = {
-                                id: id,
-                                name: updatedName,
-                                course: updatedCourse
-                            };
-
-
+                    updateUser(id, updatedName, updatedCourse)
+                        .then(function (updatedUser) {
                             response.statusCode = 200;
+                            response.setHeader("Content-Type", "application/json");
+                            response.end(JSON.stringify(updatedUser));
 
-                            response.setHeader(
-                                "Content-Type",
-                                "application/json"
-                            );
-
-                            response.end(
-                                JSON.stringify(updatedUser)
-                            );
-
-                        }
-                    );
-
-                });
-
-            }
-        );
+                        })
+                        .catch(function (error) {
+                            console.error(error);
+                            response.statusCode = 500;
+                            response.setHeader("Content-Type", "application/json");
+                            response.end(JSON.stringify({
+                                error: "Failed to update user"
+                            }));
+                            });
+                        });
+                })
+            .catch(function (error) {
+                console.error(error);
+                response.statusCode = 500;
+                response.setHeader("Content-Type", "application/json");
+                response.end(JSON.stringify({
+                    error: "Failed to retrieve user"
+                }));
+            });
 
         return;
     }
 
-
-    // DELETE /users/:id
     if (
         request.method === "DELETE" &&
         pathname.startsWith("/users/")
@@ -626,33 +494,10 @@ const server = http.createServer(function (request, response) {
         }
 
 
-        db.run(
-            "DELETE FROM users WHERE id = ?",
-            [id],
-            function (error) {
+        deleteUser(id)
+            .then(function (deleted) {
 
-                if (error) {
-
-                    console.error(error);
-
-                    response.statusCode = 500;
-
-                    response.setHeader(
-                        "Content-Type",
-                        "application/json"
-                    );
-
-                    response.end(
-                        JSON.stringify({
-                            error: "Failed to delete user"
-                        })
-                    );
-
-                    return;
-                }
-
-
-                if (this.changes === 0) {
+                if (!deleted) {
 
                     response.statusCode = 404;
 
@@ -685,8 +530,25 @@ const server = http.createServer(function (request, response) {
                     })
                 );
 
-            }
-        );
+            })
+            .catch(function (error) {
+
+                console.error(error);
+
+                response.statusCode = 500;
+
+                response.setHeader(
+                    "Content-Type",
+                    "application/json"
+                );
+
+                response.end(
+                    JSON.stringify({
+                        error: "Failed to delete user"
+                    })
+                );
+
+            });
 
         return;
     }
@@ -720,4 +582,4 @@ initializeDatabase()
     })
     .catch(function (error) {   
         console.error("Failed to initialize database:", error);
-    }); 
+    });
